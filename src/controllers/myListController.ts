@@ -1,62 +1,74 @@
 import { Request, Response } from 'express';
-import MyListService from '../services/myListService';
+import ListItem from '../models/listItem';
+import { handleError } from '../helperFns';
 
-class MyListController {
-  public async addToMyList(req: Request, res: Response): Promise<void> {
-    try {
-      const { userId, contentId, contentType } = req.body;
+// Add an item to the user's list
+export const addItem = async (req: Request, res: Response) => {
+  try {
+    const { userId, contentId, contentType } = req.body;
 
-      if (!userId || !contentId || !contentType) {
-        res
-          .status(401)
-          .json({ error: 'User ID, Content ID & Content Type are required!' });
-        return;
-      }
-      const listItem = await MyListService.addToMyList(
-        userId,
-        contentId,
-        contentType
+    if (!userId || !contentId || !contentType) {
+      return handleError(
+        res,
+        'userId, contentId, and contentType are required',
+        400
       );
-      res.status(201).json(listItem);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
     }
-  }
 
-  public async removeFromMyList(req: Request, res: Response): Promise<void> {
-    try {
-      const { userId } = req.body;
-      const { contentId } = req.params;
-
-      if (!userId || !contentId) {
-        res.status(401).json({ error: 'User ID & Content ID are required!' });
-        return;
-      }
-      await MyListService.removeFromMyList(userId, contentId);
-      res.status(204).send();
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
+    const existingItem = await ListItem.findOne({ userId, contentId });
+    if (existingItem) {
+      return handleError(res, 'Item is already in the list', 400);
     }
-  }
 
-  public async listMyItems(req: Request, res: Response): Promise<void> {
-    try {
-      const { userId } = req.body;
-      if (!userId) {
-        res.status(401).json({ error: 'User ID is required!' });
-        return;
-      }
-      const { page = 1, limit = 10 } = req.query;
-      const items = await MyListService.listMyItems(
-        userId,
-        Number(page),
-        Number(limit)
-      );
-      res.status(200).json(items);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
+    const listItem = new ListItem({ userId, contentId, contentType });
+    await listItem.save();
+
+    res.status(201).json(listItem);
+  } catch (error) {
+    console.error(error);
+    handleError(res, 'Failed to add item to the list');
+  }
+};
+
+// Remove an item from the user's list
+export const removeItem = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.body;
+    const { contentId } = req.params;
+
+    if (!userId || !contentId) {
+      return handleError(res, 'userId and contentId are required', 400);
     }
-  }
-}
 
-export default new MyListController();
+    const deletedItem = await ListItem.findOneAndDelete({ userId, contentId });
+    if (!deletedItem) {
+      return handleError(res, 'Item not found in the list', 404);
+    }
+
+    res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    handleError(res, 'Failed to remove item from the list');
+  }
+};
+
+// List items in the user's list
+export const listItems = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.body;
+    const { page = 1, limit = 10 } = req.query;
+
+    if (!userId) {
+      return handleError(res, 'userId is required', 400);
+    }
+
+    const items = await ListItem.find({ userId })
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Number(limit));
+
+    res.status(200).json(items);
+  } catch (error) {
+    console.error(error);
+    handleError(res, 'Failed to list items');
+  }
+};

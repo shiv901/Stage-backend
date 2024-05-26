@@ -16,7 +16,7 @@ This project implements the "My List" feature for an OTT platform using Node.js,
 1. Clone the repository:
 
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/shiv901/Stage-backend
    cd mylist-api
    ```
 2. Install dependencies:
@@ -32,7 +32,7 @@ This project implements the "My List" feature for an OTT platform using Node.js,
     ```
 4. Seed initial data:
     ```bash
-    npx ts-node scripts/seedData.ts
+    npm run seed
     ```
 
 5. Start the server:

@@ -1,7 +1,12 @@
-import { NextFunction, Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-function verifyToken(req: Request, res: Response, next: NextFunction) {
+const secret = process.env.JWT_SECRET;
+if (!secret) {
+  throw new Error('JWT_SECRET environment variable is not defined');
+}
+
+const verifyToken = (req: Request, res: Response, next: NextFunction) => {
   const token = req.headers.authorization?.split(' ')[1];
 
   if (!token) {
@@ -9,17 +14,11 @@ function verifyToken(req: Request, res: Response, next: NextFunction) {
   }
 
   try {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      throw new Error('JWT secret is not defined');
-    }
-
-    const decoded = jwt.verify(token, secret);
-    (req as any).user = decoded;
+    const decoded = jwt.verify(token, secret) as { userId: string };
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Invalid token.' });
+    res.status(400).json({ error: 'Invalid token' });
   }
-}
+};
 
 export default verifyToken;
